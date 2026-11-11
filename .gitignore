@@ -1,0 +1,24 @@
+# Claves, respaldos y salidas locales: nunca deben publicarse.
+*.key
+*.pem
+*.p12
+*.pfx
+*.img
+*.bin
+*.log
+*.ctx
+*.priv
+*.original
+crypttab
+crypttab.*
+fstab
+fstab.*
+estado.json
+operacion.json
+*respaldo*/
+*backup*/
+privado/
+.env
+.env.*
+__pycache__/
+*.py[cod]

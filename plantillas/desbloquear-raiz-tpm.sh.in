@@ -1,0 +1,13 @@
+#!/bin/sh
+# El instalador sustituye el identificador; este archivo no contiene una clave.
+if /usr/bin/tpm2-initramfs-tool unseal \
+    --persistent @OBJETO_TPM@ --pcrs 7 --banks SHA256 \
+    --tcti device:/dev/tpmrm0
+then
+    exit 0
+fi
+if [ "${1-}" = "--no-fallback" ]; then
+    exit 1
+fi
+echo 'El TPM no pudo liberar la clave; se solicitará la contraseña.' >&2
+exec /lib/cryptsetup/askpass "Contraseña para ${CRYPTTAB_NAME:-la raíz cifrada}: "

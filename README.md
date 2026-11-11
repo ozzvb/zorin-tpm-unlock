@@ -400,27 +400,6 @@ La restauración normal de configuración utiliza esos archivos y regenera el in
 
 Las renovaciones consumen recursos nuevos. Después de varios reinicios satisfactorios, una revisión manual puede identificar objetos y ranuras obsoletos usando los metadatos privados de cada operación. Nunca deduzcas por el número de ranura cuál contiene la contraseña. Conserva y verifica una vía manual de acceso.
 
-## Publicación en GitHub
-
-Nombre recomendado del repositorio: **zorin-tpm-unlock**. La descripción es la primera frase de este documento.
-
-Publica únicamente los archivos del proyecto. No copies aquí `/etc/crypttab`, el estado instalado, claves de volúmenes de datos, respaldos de cabecera, capturas, informes de firmware ni registros de la ejecución. No se necesita subir ninguno de esos archivos para reutilizar los scripts en otro equipo.
-
-Antes de preparar un commit:
-
-```bash
-git status --short
-git diff --check
-```
-
-Tras seleccionar los archivos que deseas incluir, revisa el contenido preparado:
-
-```bash
-git diff --cached
-```
-
-Comprueba también el nombre y correo que Git vaya a registrar como autor si quieres mantenerlos privados. Si publicas una clave por error, borrar el archivo en un commit posterior no la vuelve secreta: debes revocar o sustituir esa credencial y sanear el historial afectado.
-
 ## Mantenimiento
 
 Mantén la contraseña de recuperación y los respaldos en un lugar privado accesible fuera del equipo. Antes de actualizaciones de firmware o Secure Boot, comprueba que puedes usarlos. Después de cambios relevantes, prueba el arranque y el montaje de tus datos.

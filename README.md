@@ -37,22 +37,78 @@ Escribe únicamente los comandos de los bloques de terminal. Los párrafos expli
 
 Si tu desbloqueo ya funciona, no necesitas repetir la primera configuración; consulta las secciones de comprobación y recuperación.
 
+## Software y dependencias necesarias
+
+La guía está dirigida a **Zorin OS 18.1, basado en Ubuntu 24.04**, con arranque mediante `initramfs-tools` y administración de servicios mediante systemd. Utiliza los paquetes de los repositorios de esa distribución; las bibliotecas adicionales se instalan automáticamente mediante APT. No se fijan versiones individuales que puedan quedar desactualizadas respecto de las actualizaciones de seguridad del sistema.
+
+### Paquetes necesarios para el desbloqueo TPM
+
+| Paquete | Para qué se necesita |
+| --- | --- |
+| `cryptsetup` | Consultar LUKS, comprobar contraseñas, añadir una ranura y abrir los volúmenes cifrados. APT instala también sus herramientas binarias. |
+| `cryptsetup-initramfs` | Integrar cryptsetup y la solicitud de contraseña con el arranque temprano. |
+| `initramfs-tools` | Incorporar los scripts, bibliotecas y controladores al initramfs y regenerarlo con `update-initramfs`. |
+| `tpm2-initramfs-tool` | Crear el objeto TPM que protege la nueva clave y liberarla cuando se cumple la política. |
+| `tpm2-tools` | Consultar objetos y propiedades del TPM y calcular la política de PCR utilizada durante el diagnóstico. |
+| `libtss2-tcti-device0t64` | Proporcionar `libtss2-tcti-device.so.0`, necesaria para comunicarse directamente con `/dev/tpmrm0`. |
+| `mokutil` | Comprobar que Secure Boot esté activado antes de configurar el desbloqueo. |
+| `python3` | Ejecutar los asistentes de detección, primera configuración de datos y revisión de servicios. Utilizan la biblioteca estándar de Python. |
+| `util-linux` | Proporcionar `lsblk`, `findmnt`, `blkid` y `flock` para identificar dispositivos, consultar montajes y evitar ejecuciones simultáneas. |
+| `mount` | Proporcionar las herramientas de montaje y `swapon`, utilizada para consultar la swap activa. |
+
+En Ubuntu 24.04 el nombre del paquete TCTI incluye el sufijo `t64`, aunque el archivo de biblioteca conserva el nombre `libtss2-tcti-device.so.0`. No debe sustituirse por el nombre del paquete de otra versión de Ubuntu. [Paquete TCTI de Ubuntu 24.04](https://packages.ubuntu.com/noble/libtss2-tcti-device0t64). La integración de arranque se instala con [cryptsetup-initramfs](https://packages.ubuntu.com/noble/cryptsetup-initramfs).
+
+### Componentes de la instalación base de Zorin
+
+Estos componentes suelen estar instalados de origen y también son necesarios para los scripts:
+
+| Paquete o componente | Función utilizada |
+| --- | --- |
+| `systemd` | `systemctl`, `systemd-escape` y los generadores que convierten crypttab y fstab en servicios y montajes. |
+| `bash` y `/bin/sh` | Ejecutar el instalador y los scripts del initramfs. |
+| `sudo` | Ejecutar las operaciones administrativas y editar la configuración mediante `sudoedit`. |
+| `coreutils` | Crear directorios temporales, instalar y copiar archivos, ajustar permisos y consultar espacio disponible. |
+| `diffutils` | Comparar mediante `cmp` la clave generada con la liberada por el TPM, sin mostrarla. |
+| `grep`, `sed` y una implementación de `awk` | Comprobar y generar configuración y localizar la biblioteca TPM. |
+| `libc-bin` | Proporcionar `ldconfig`, usado para localizar las bibliotecas que se incorporan al arranque. |
+
+APT gestiona las dependencias de bibliotecas de cryptsetup y de la pila TPM. No copies bibliotecas manualmente al repositorio ni instales paquetes Python adicionales para ejecutar estos scripts.
+
+### Software según la configuración del equipo
+
+| Paquete | Cuándo se necesita |
+| --- | --- |
+| `btrfs-progs` | Cuando los discos de datos usan Btrfs, especialmente para su administración y diagnóstico. |
+| `lvm2` | Cuando la raíz utiliza volúmenes LVM dentro del cifrado; debe formar parte de la instalación que ya arranca con ese esquema. |
+| `fwupd` | Para consultar el historial de firmware y el estado de `dbx` en la sección de recuperación. No es necesario para sellar una clave TPM. |
+| `git` | Solo si vas a obtener o actualizar esta guía mediante Git. No es necesario cuando utilizas una copia descargada y extraída. |
+
+El soporte del sistema de archivos también debe estar disponible en el kernel. Los scripts de datos trabajan sobre sistemas de archivos existentes; instalar sus herramientas no cifra, formatea ni convierte un disco.
+
 ## Paso 3. Instalar las herramientas
 
-Ejecuta:
+Instala los paquetes necesarios para la configuración y sus comprobaciones:
 
 ```bash
 sudo apt update
-sudo apt install cryptsetup cryptsetup-initramfs initramfs-tools tpm2-initramfs-tool tpm2-tools libtss2-tcti-device0 mokutil python3 util-linux
+sudo apt install cryptsetup cryptsetup-initramfs initramfs-tools tpm2-initramfs-tool tpm2-tools libtss2-tcti-device0t64 mokutil python3 util-linux mount
 ```
 
-`cryptsetup` administra LUKS; `cryptsetup-initramfs` lo integra en el arranque; `tpm2-initramfs-tool` sella y libera la clave; `tpm2-tools` permite consultar el TPM. Las demás herramientas comprueban el arranque y los dispositivos. El script de configuración no instala paquetes por su cuenta.
+La sección anterior explica la función de cada paquete. El script de configuración no instala paquetes por su cuenta: comprueba que estén disponibles antes de crear una clave.
 
 Si los datos usan Btrfs, instala además:
 
 ```bash
 sudo apt install btrfs-progs
 ```
+
+Si vas a utilizar las consultas de firmware de la sección de recuperación y no tienes `fwupdmgr`, instala:
+
+```bash
+sudo apt install fwupd
+```
+
+Estos comandos instalan software; no ejecutan por sí mismos la configuración de TPM ni una actualización de firmware. Continúa con las comprobaciones del paso 4.
 
 ## Paso 4. Comprobar antes de cambiar la configuración
 
